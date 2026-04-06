@@ -242,7 +242,6 @@ def _resolve_apple_music(url: str) -> list[str]:
     resp.raise_for_status()
 
     tracks = []
-    # Apple Music embeds JSON-LD with MusicRecording schema
     for match in re.finditer(
         r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
         resp.text, re.DOTALL,
@@ -252,29 +251,32 @@ def _resolve_apple_music(url: str) -> list[str]:
         except json.JSONDecodeError:
             continue
 
-        # Can be a single object or a list
         items = data if isinstance(data, list) else [data]
         for item in items:
-            if item.get("@type") == "MusicAlbum":
-                for t in item.get("tracks", []):
-                    artist = t.get("byArtist", {}).get("name", "")
-                    name = t.get("name", "")
-                    if artist and name:
-                        tracks.append(f"{artist} - {name}")
-            elif item.get("@type") == "MusicPlaylist":
-                for t in item.get("track", []):
-                    artist = t.get("byArtist", {}).get("name", "")
-                    name = t.get("name", "")
-                    if artist and name:
-                        tracks.append(f"{artist} - {name}")
-            elif item.get("@type") == "MusicRecording":
-                artist = item.get("byArtist", {}).get("name", "")
+            # Single song page: MusicComposition with nested audio.byArtist
+            if item.get("@type") == "MusicComposition":
+                audio = item.get("audio", {})
+                by = audio.get("byArtist", [])
+                artist = by[0].get("name", "") if isinstance(by, list) and by else by.get("name", "") if isinstance(by, dict) else ""
                 name = item.get("name", "")
-                if artist and name:
-                    tracks.append(f"{artist} - {name}")
+                if name:
+                    tracks.append(f"{artist} - {name}" if artist else name)
+
+            # Playlist / album: track[] has names but often no byArtist
+            elif item.get("@type") in ("MusicPlaylist", "MusicAlbum"):
+                track_key = "track" if "track" in item else "tracks"
+                for t in item.get(track_key, []):
+                    name = t.get("name", "")
+                    # Try to get artist (sometimes present, sometimes not)
+                    by = t.get("byArtist", {})
+                    artist = by.get("name", "") if isinstance(by, dict) else ""
+                    if not artist and isinstance(by, list) and by:
+                        artist = by[0].get("name", "")
+                    if name:
+                        tracks.append(f"{artist} - {name}" if artist else name)
 
     if not tracks:
-        # Fallback: try parsing meta tags for a single song page
+        # Fallback: og:title often has "Song - Artist" format
         title_match = re.search(r'<meta\s+property="og:title"\s+content="([^"]+)"', resp.text)
         if title_match:
             tracks.append(title_match.group(1))
@@ -284,62 +286,69 @@ def _resolve_apple_music(url: str) -> list[str]:
     return tracks
 
 
-def _resolve_tidal(url: str) -> list[str]:
-    resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+def _extract_tidal_id(url: str) -> tuple[str, str]:
+    """Extract resource type and ID from a Tidal URL."""
+    m = re.search(r'tidal\.com/(?:browse/)?(track|album|playlist)/([a-f0-9-]+)', url)
+    if not m:
+        raise ValueError(f"Could not parse Tidal URL: {url}")
+    return m.group(1), m.group(2)
+
+
+_TIDAL_API = "https://api.tidal.com/v1"
+_TIDAL_TOKEN = "CzET4vdadNUFQ5JU"  # public web client token
+
+
+def _tidal_api_get(path: str, params: dict | None = None) -> dict:
+    """Call the public Tidal API."""
+    p = {"countryCode": "US", "limit": 100, **(params or {})}
+    resp = requests.get(
+        f"{_TIDAL_API}{path}",
+        params=p,
+        headers={"X-Tidal-Token": _TIDAL_TOKEN},
+        timeout=15,
+    )
     resp.raise_for_status()
+    return resp.json()
 
-    tracks = []
-    # Tidal embeds Next.js JSON data with track info
-    for match in re.finditer(
-        r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
-        resp.text, re.DOTALL,
-    ):
-        try:
-            data = json.loads(match.group(1))
-        except json.JSONDecodeError:
-            continue
-        items = data if isinstance(data, list) else [data]
-        for item in items:
-            if item.get("@type") == "MusicRecording":
-                artist = item.get("byArtist", {}).get("name", "")
-                name = item.get("name", "")
-                if artist and name:
-                    tracks.append(f"{artist} - {name}")
 
-    if not tracks:
-        # Fallback: look for __NEXT_DATA__ JSON blob
-        nd = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', resp.text, re.DOTALL)
-        if nd:
-            try:
-                ndata = json.loads(nd.group(1))
-                # Navigate to track items in the page props
-                modules = (
-                    ndata.get("props", {})
-                    .get("pageProps", {})
-                )
-                # Try playlist/album track items
-                for key in ("playlist", "album"):
-                    obj = modules.get(key, {})
-                    for t in obj.get("items", obj.get("tracks", [])):
-                        # Items can be nested under "item"
-                        track = t.get("item", t) if isinstance(t, dict) else t
-                        title = track.get("title", "")
-                        artists = track.get("artists", [])
-                        artist = artists[0].get("name", "") if artists else ""
-                        if artist and title:
-                            tracks.append(f"{artist} - {title}")
-            except (json.JSONDecodeError, KeyError, IndexError):
-                pass
+def _resolve_tidal(url: str) -> list[str]:
+    rtype, rid = _extract_tidal_id(url)
 
-    if not tracks:
-        # Last resort: og:title
-        title_match = re.search(r'<meta\s+property="og:title"\s+content="([^"]+)"', resp.text)
-        if title_match:
-            tracks.append(title_match.group(1))
+    if rtype == "track":
+        data = _tidal_api_get(f"/tracks/{rid}")
+        artist = data.get("artist", {}).get("name", "")
+        title = data.get("title", "")
+        return [f"{artist} - {title}"] if artist and title else [title]
 
-    if not tracks:
-        raise ValueError("Could not parse tracks from Tidal page")
-    return tracks
+    if rtype == "album":
+        data = _tidal_api_get(f"/albums/{rid}/tracks")
+        tracks = []
+        for t in data.get("items", []):
+            artist = t.get("artist", {}).get("name", "")
+            title = t.get("title", "")
+            if title:
+                tracks.append(f"{artist} - {title}" if artist else title)
+        return tracks
+
+    if rtype == "playlist":
+        tracks = []
+        offset = 0
+        while True:
+            data = _tidal_api_get(f"/playlists/{rid}/tracks", {"offset": offset})
+            items = data.get("items", [])
+            if not items:
+                break
+            for t in items:
+                artist = t.get("artist", {}).get("name", "")
+                title = t.get("title", "")
+                if title:
+                    tracks.append(f"{artist} - {title}" if artist else title)
+            offset += len(items)
+            if offset >= data.get("totalNumberOfItems", 0):
+                break
+        return tracks
+
+    raise ValueError(f"Unsupported Tidal resource type: {rtype}")
 
 
 _RESOLVERS = {
@@ -369,7 +378,7 @@ def _run_playlist(job_id: str, url: str, out_dir: str, source: str):
             cmd = [ytdlp] + _ytdlp_audio_args() + [
                 "--newline",
                 "-o", os.path.join(out_dir, "%(title)s.%(ext)s"),
-                f"ytsearch1:{query}",
+                f"ytsearch1:{query} official audio",
             ]
             proc = subprocess.run(
                 cmd,
