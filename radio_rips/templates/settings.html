@@ -33,6 +33,31 @@
     </div>
 
     <div class="card">
+        <h2>Deezer</h2>
+        <p style="color:var(--muted); margin-bottom:0.8rem;">
+            Required for downloads from Deezer. To get your ARL:
+        </p>
+        <ol class="arl-steps">
+            <li>Log in to <a href="https://www.deezer.com" target="_blank">deezer.com</a></li>
+            <li>Open browser DevTools (F12)</li>
+            <li>Go to Application &rarr; Cookies &rarr; deezer.com</li>
+            <li>Copy the value of the <strong>arl</strong> cookie</li>
+        </ol>
+        <input type="text" name="deezer_arl" value="{{ deezer_arl }}" placeholder="Paste your ARL cookie here"
+               style="margin-top:0.8rem;" autocomplete="off" spellcheck="false">
+
+        <p style="color:var(--muted); margin-top:1rem; margin-bottom:0.5rem;">Audio quality:</p>
+        <div class="quality-toggle">
+            <input type="radio" name="deezer_quality" value="flac" id="dq-flac" {{ 'checked' if deezer_quality == 'flac' }}>
+            <label for="dq-flac">FLAC</label>
+            <input type="radio" name="deezer_quality" value="320" id="dq-320" {{ 'checked' if deezer_quality == '320' }}>
+            <label for="dq-320">MP3 320</label>
+            <input type="radio" name="deezer_quality" value="128" id="dq-128" {{ 'checked' if deezer_quality == '128' }}>
+            <label for="dq-128">MP3 128</label>
+        </div>
+    </div>
+
+    <div class="card">
         <h2>Apple Music &amp; Tidal</h2>
         <p style="color:var(--muted);">
             No setup needed. Paste any public Apple Music or Tidal link

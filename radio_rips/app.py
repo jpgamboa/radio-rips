@@ -166,18 +166,35 @@ def _run_ytdlp(job_id: str, url: str, out_dir: str):
     ], out_dir)
 
 
+def _run_deemix(job_id: str, url: str, out_dir: str):
+    """Download via deemix (Deezer source, configurable quality)."""
+    arl = _get_setting("deezer_arl") or config.DEEZER_ARL
+    if not arl:
+        _finish_job(job_id, out_dir, 1, "Deezer ARL not configured — set it in Settings")
+        return
+    bitrate = _get_setting("deezer_quality") or "flac"
+    _stream_process(job_id, [
+        _find_bin("deemix"),
+        "--bitrate", bitrate,
+        "-p", out_dir,
+        url,
+    ], out_dir, env={**os.environ, "DEEZER_ARL": arl})
+
+
 # ---------------------------------------------------------------------------
 # Playlist resolvers (Spotify, Apple Music, Tidal → "Artist - Title" lists)
 # ---------------------------------------------------------------------------
 
 def _detect_source(url: str) -> str | None:
-    """Return 'spotify', 'apple', 'tidal', or None for direct yt-dlp URLs."""
+    """Return 'spotify', 'apple', 'tidal', 'deezer', or None for direct yt-dlp URLs."""
     if "open.spotify.com/" in url or "spotify:" in url:
         return "spotify"
     if "music.apple.com/" in url:
         return "apple"
     if "tidal.com/" in url:
         return "tidal"
+    if "deezer.com/" in url:
+        return "deezer"
     return None
 
 
@@ -417,7 +434,11 @@ def submit():
         )
 
     source = _detect_source(url)
-    if source:
+    if source == "deezer":
+        thread = threading.Thread(
+            target=_run_deemix, args=(job_id, url, out_dir), daemon=True,
+        )
+    elif source:
         thread = threading.Thread(
             target=_run_playlist, args=(job_id, url, out_dir, source), daemon=True,
         )
@@ -479,6 +500,8 @@ def settings():
         download_dir=_get_setting("download_dir") or config.DOWNLOAD_DIR,
         spotify_client_id=_get_setting("spotify_client_id"),
         spotify_client_secret=_get_setting("spotify_client_secret"),
+        deezer_arl=_get_setting("deezer_arl") or config.DEEZER_ARL,
+        deezer_quality=_get_setting("deezer_quality") or "flac",
     )
 
 
@@ -487,6 +510,8 @@ def settings_save():
     download_dir = request.form.get("download_dir", "").strip()
     spotify_client_id = request.form.get("spotify_client_id", "").strip()
     spotify_client_secret = request.form.get("spotify_client_secret", "").strip()
+    deezer_arl = request.form.get("deezer_arl", "").strip()
+    deezer_quality = request.form.get("deezer_quality", "flac").strip()
 
     if download_dir:
         os.makedirs(download_dir, exist_ok=True)
@@ -494,6 +519,8 @@ def settings_save():
 
     _set_setting("spotify_client_id", spotify_client_id)
     _set_setting("spotify_client_secret", spotify_client_secret)
+    _set_setting("deezer_arl", deezer_arl)
+    _set_setting("deezer_quality", deezer_quality)
 
     return redirect(url_for("settings"))
 

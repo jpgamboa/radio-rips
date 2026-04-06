@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "radio-rips"
 version = "0.1.0"
-description = "Web UI for ripping audio from YouTube, Deezer, and more"
+description = "Web UI for ripping audio from YouTube, Spotify, Apple Music, Tidal, and Deezer"
 requires-python = ">=3.10"
 dependencies = [
     "flask>=3.0",
@@ -13,6 +13,9 @@ dependencies = [
     "spotipy>=2.23",
     "requests>=2.31",
 ]
+
+[project.optional-dependencies]
+deezer = ["deemix>=3.6.6"]
 
 [project.scripts]
 radio-rips = "radio_rips.app:main"

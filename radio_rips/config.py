@@ -4,3 +4,6 @@ BASE_DIR = os.environ.get("RADIO_RIPS_DIR", os.getcwd())
 DOWNLOAD_DIR = os.path.join(BASE_DIR, "downloads")
 DATABASE = os.path.join(BASE_DIR, "jobs.db")
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-key-change-me")
+
+# Deezer ARL cookie for deemix (required for FLAC downloads)
+DEEZER_ARL = os.environ.get("DEEZER_ARL", "")

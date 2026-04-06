@@ -1,8 +1,8 @@
 # Radio Rips
 
-A self-hosted web UI for ripping audio from YouTube, Spotify, Apple Music, and Tidal.
+A self-hosted web UI for ripping audio from YouTube, Spotify, Apple Music, Tidal, and Deezer.
 
-Paste a URL, hit "Rip It", and get MP3 files. Spotify, Apple Music, and Tidal links are automatically resolved to YouTube and downloaded via [yt-dlp](https://github.com/yt-dlp/yt-dlp).
+Paste a URL, hit "Rip It", and get audio files. Spotify, Apple Music, and Tidal links are automatically resolved to YouTube and downloaded via [yt-dlp](https://github.com/yt-dlp/yt-dlp). Deezer links are downloaded directly via [deemix](https://www.reddit.com/r/deemix/) with configurable quality (FLAC, MP3 320, MP3 128).
 
 ## Supported Sources
 
@@ -12,6 +12,7 @@ Paste a URL, hit "Rip It", and get MP3 files. Spotify, Apple Music, and Tidal li
 | Spotify (track, album, playlist) | `open.spotify.com/...` | Yes (free) |
 | Apple Music (track, album, playlist) | `music.apple.com/...` | No |
 | Tidal (track, album, playlist) | `tidal.com/...` | No |
+| Deezer (track, album, playlist) | `deezer.com/...` | ARL cookie |
 
 ## Install
 
@@ -50,6 +51,9 @@ source .venv/bin/activate
 
 # Install the package (pulls in yt-dlp, flask, spotipy automatically)
 pip install .
+
+# Optional: install with Deezer support
+pip install ".[deezer]"
 ```
 
 ### Run
@@ -72,6 +76,10 @@ Spotify URLs require a free API key. Go to **Settings** in the web UI for step-b
 3. Copy the **Client ID** and **Client Secret**
 4. Paste them into the Settings page
 
+### Deezer (optional)
+
+Deezer downloads require an ARL cookie and the optional `deemix` dependency. Go to **Settings** in the web UI for step-by-step instructions. You can also choose audio quality: FLAC, MP3 320kbps, or MP3 128kbps.
+
 ### Download Directory
 
 By default, files are saved to a `downloads/` folder in the current working directory. You can change this in **Settings**.
@@ -80,5 +88,6 @@ By default, files are saved to a `downloads/` folder in the current working dire
 
 - **YouTube / SoundCloud / direct links** — downloaded directly by yt-dlp
 - **Spotify / Apple Music / Tidal** — track metadata (artist + title) is extracted from the URL, then each track is searched on YouTube (`ytsearch1:"Artist - Title"`) and downloaded via yt-dlp
+- **Deezer** — downloaded directly via deemix at your chosen quality (FLAC/320/128)
 
-All audio is output as MP3 at the highest quality (V0 VBR).
+YouTube downloads are output as MP3 at the highest quality (V0 VBR). Deezer quality is configurable in Settings.
