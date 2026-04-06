@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Settings - Radio Rips{% endblock %}
+
+{% block content %}
+<h1>Settings</h1>
+
+<form action="/settings" method="post" style="display:flex; flex-direction:column; align-items:center; gap:1.2rem; width:100%;">
+
+    <div class="card">
+        <h2>Download Directory</h2>
+        <p style="color:var(--muted); margin-bottom:0.8rem;">
+            Absolute path where ripped files are saved.
+        </p>
+        <input type="text" name="download_dir" value="{{ download_dir }}" placeholder="/home/user/Music">
+    </div>
+
+    <div class="card">
+        <h2>Spotify API</h2>
+        <p style="color:var(--muted); margin-bottom:0.8rem;">
+            Required to download from Spotify URLs. Spotify tracks are resolved
+            to YouTube and downloaded via yt-dlp. To get your credentials:
+        </p>
+        <ol class="arl-steps">
+            <li>Go to the <a href="https://developer.spotify.com/dashboard" target="_blank">Spotify Developer Dashboard</a></li>
+            <li>Log in and click <strong>Create App</strong></li>
+            <li>Name it anything (e.g. "Radio Rips"), set redirect URI to <strong>http://localhost</strong></li>
+            <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from the app settings</li>
+        </ol>
+        <input type="text" name="spotify_client_id" value="{{ spotify_client_id }}"
+               placeholder="Client ID" style="margin-top:0.8rem;" autocomplete="off" spellcheck="false">
+        <input type="text" name="spotify_client_secret" value="{{ spotify_client_secret }}"
+               placeholder="Client Secret" style="margin-top:0.6rem;" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="card">
+        <h2>Apple Music &amp; Tidal</h2>
+        <p style="color:var(--muted);">
+            No setup needed. Paste any public Apple Music or Tidal link
+            (track, album, or playlist) and tracks are automatically
+            resolved to YouTube and downloaded via yt-dlp.
+        </p>
+    </div>
+
+    <button type="submit">Save</button>
+</form>
+{% endblock %}

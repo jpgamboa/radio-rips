@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Radio Rips{% endblock %}
+
+{% block content %}
+<h1>Radio Rips</h1>
+
+<form action="/submit" method="post" style="display:flex; flex-direction:column; align-items:center; gap:1rem; width:100%;">
+    <input type="url" name="url" placeholder="YouTube / Spotify / Apple Music / Tidal URL" required autofocus>
+
+    <button type="submit">Rip It</button>
+</form>
+{% endblock %}

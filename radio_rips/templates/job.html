@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Job {{ job.id }}{% endblock %}
+
+{% block head %}
+<style>
+.progress-wrap {
+    width: 100%;
+    background: var(--background-color);
+    border: 2px solid var(--primary-color);
+    border-radius: 5px;
+    overflow: hidden;
+    height: 28px;
+    position: relative;
+    margin: 0.8rem 0;
+}
+.progress-bar {
+    height: 100%;
+    background: var(--primary-color);
+    transition: width 0.4s ease;
+    width: 0%;
+}
+.progress-text {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.55rem;
+    color: var(--primary-color);
+    mix-blend-mode: difference;
+}
+.progress-msg {
+    color: var(--muted);
+    font-size: 0.5rem;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-height: 1.2em;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Job {{ job.id }}</h2>
+
+<div class="card" id="job-card">
+    <p>URL: {{ job.url }}</p>
+    <p>Quality: {{ job.quality | upper }}</p>
+    <p>Status: <span id="status" class="status-{{ job.status }}">{{ job.status | upper }}</span></p>
+
+    {% if job.status in ('running', 'pending') %}
+    <div class="progress-wrap" id="progress-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+        <div class="progress-text" id="progress-text">0%</div>
+    </div>
+    <div class="progress-msg" id="progress-msg"></div>
+    {% endif %}
+
+    <div id="error-area">
+    {% if job.error %}
+    <p style="color:var(--error-color); word-break:break-all;">{{ job.error }}</p>
+    {% endif %}
+    </div>
+</div>
+
+<div id="files-section">
+    {% if files %}
+    <h2>Files</h2>
+    <div class="card">
+        <ul class="file-list">
+        {% for f in files %}
+            <li>
+                <a href="{{ f.url }}">{{ f.name }}</a>
+                <span style="color:var(--muted)">{{ "%.1f"|format(f.size / 1048576) }} MB</span>
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if job.status == 'running' or job.status == 'pending' %}
+<script>
+(function poll() {
+    setTimeout(async () => {
+        try {
+            const res = await fetch('/api/job/{{ job.id }}');
+            const data = await res.json();
+            const el = document.getElementById('status');
+            el.textContent = data.status.toUpperCase();
+            el.className = 'status-' + data.status;
+
+            const bar = document.getElementById('progress-bar');
+            const pctText = document.getElementById('progress-text');
+            const msg = document.getElementById('progress-msg');
+            if (bar && data.progress != null) {
+                bar.style.width = data.progress + '%';
+                pctText.textContent = data.progress + '%';
+            }
+            if (msg && data.progress_message) {
+                msg.textContent = data.progress_message;
+            }
+
+            if (data.status === 'done' || data.status === 'error') {
+                const wrap = document.getElementById('progress-wrap');
+                if (wrap) wrap.remove();
+                if (msg) msg.remove();
+
+                if (data.error) {
+                    const area = document.getElementById('error-area');
+                    const p = document.createElement('p');
+                    p.style.color = 'var(--error-color)';
+                    p.style.wordBreak = 'break-all';
+                    p.textContent = data.error;
+                    area.appendChild(p);
+                }
+                if (data.files && data.files.length) {
+                    const sec = document.getElementById('files-section');
+                    let html = '<h2>Files</h2><div class="card"><ul class="file-list">';
+                    data.files.forEach(f => {
+                        const mb = (f.size / 1048576).toFixed(1);
+                        html += `<li><a href="${f.url}">${f.name}</a><span style="color:var(--muted)">${mb} MB</span></li>`;
+                    });
+                    html += '</ul></div>';
+                    sec.innerHTML = html;
+                }
+                return;
+            }
+        } catch(e) {}
+        poll();
+    }, 1000);
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}History - Radio Rips{% endblock %}
+
+{% block content %}
+<h1>Job History</h1>
+
+{% if jobs %}
+<div class="card" style="overflow-x:auto;">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>URL</th>
+                <th>Quality</th>
+                <th>Status</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for job in jobs %}
+            <tr>
+                <td><a href="/job/{{ job.id }}">{{ job.id }}</a></td>
+                <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ job.url }}</td>
+                <td>{{ job.quality | upper }}</td>
+                <td class="status-{{ job.status }}">{{ job.status | upper }}</td>
+                <td>{{ job.created_at[:16] }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p>No jobs yet.</p>
+{% endif %}
+{% endblock %}

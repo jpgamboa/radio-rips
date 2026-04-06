@@ -1,0 +1,9 @@
+:root {
+    --background-color: #13111b;
+    --primary-color: #1ed760;
+    --text-color: #13111b;
+    --shadow-color: #000;
+    --card-bg: #1c1a27;
+    --muted: #888;
+    --error-color: #e74c3c;
+}

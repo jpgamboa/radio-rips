@@ -1,0 +1,178 @@
+body {
+    background-color: var(--background-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 2rem 1rem;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.5rem;
+    color: var(--primary-color);
+    box-sizing: border-box;
+}
+
+h1 {
+    font-size: 1.4rem;
+    color: var(--primary-color);
+    text-shadow: 2px 2px var(--shadow-color);
+    margin-bottom: 1.5rem;
+}
+
+h2 {
+    font-size: 1rem;
+    color: var(--primary-color);
+    text-shadow: 2px 2px var(--shadow-color);
+}
+
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+button, .btn {
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    font-size: 0.8rem;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-family: 'Press Start 2P', cursive;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+button:hover, .btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 4px 4px 0 var(--shadow-color);
+}
+
+input[type="text"], input[type="url"], select {
+    background: var(--card-bg);
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.7rem;
+    padding: 10px 14px;
+    border-radius: 5px;
+    width: 100%;
+    max-width: 500px;
+    box-sizing: border-box;
+}
+input::placeholder {
+    color: var(--muted);
+}
+select {
+    cursor: pointer;
+}
+
+.container {
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.card {
+    background: var(--card-bg);
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.status-running { color: #f1c40f; }
+.status-done    { color: var(--primary-color); }
+.status-error   { color: var(--error-color); }
+.status-pending { color: var(--muted); }
+
+.file-list {
+    list-style: none;
+    padding: 0;
+    width: 100%;
+}
+.file-list li {
+    padding: 6px 0;
+    border-bottom: 1px solid #2a2838;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.55rem;
+}
+.file-list li:last-child {
+    border-bottom: none;
+}
+
+.nav {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.7rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.55rem;
+}
+th, td {
+    text-align: left;
+    padding: 8px 6px;
+    border-bottom: 1px solid #2a2838;
+}
+th {
+    color: var(--primary-color);
+    font-size: 0.6rem;
+}
+td {
+    color: var(--muted);
+}
+td a {
+    color: var(--primary-color);
+}
+
+.arl-steps {
+    color: var(--muted);
+    padding-left: 1.2rem;
+    line-height: 2.2;
+}
+.arl-steps strong {
+    color: var(--primary-color);
+}
+
+.quality-toggle {
+    display: flex;
+    gap: 0;
+    border: 2px solid var(--primary-color);
+    border-radius: 5px;
+    overflow: hidden;
+    max-width: 320px;
+}
+.quality-toggle label {
+    flex: 1;
+    text-align: center;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.6rem;
+    color: var(--primary-color);
+    background: var(--card-bg);
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+}
+.quality-toggle input[type="radio"] {
+    display: none;
+}
+.quality-toggle input[type="radio"]:checked + label {
+    background: var(--primary-color);
+    color: var(--text-color);
+}
