@@ -153,6 +153,11 @@ def _stream_process(job_id: str, cmd: list[str], out_dir: str, env=None):
         _clear_progress(job_id)
 
 
+def _ytdlp_base_args() -> list[str]:
+    """Return base yt-dlp flags used for all commands."""
+    return ["--remote-components", "ejs:github"]
+
+
 def _ytdlp_audio_args() -> list[str]:
     """Return yt-dlp flags for the configured audio format."""
     fmt = _get_setting("ytdlp_format") or "mp3"
@@ -177,6 +182,7 @@ def _ytdlp_cookie_args() -> list[str]:
 def _run_ytdlp(job_id: str, url: str, out_dir: str):
     """Download via yt-dlp (direct YouTube/SoundCloud/etc)."""
     cmd = [_find_bin("yt-dlp")]
+    cmd += _ytdlp_base_args()
     cmd += _ytdlp_audio_args()
     cmd += _ytdlp_cookie_args()
     cmd += [
@@ -420,7 +426,7 @@ def _run_playlist(job_id: str, url: str, out_dir: str, source: str):
             pct = int((i - 1) / total * 100)
             _set_progress(job_id, pct, f"[{i}/{total}] {query}")
 
-            cmd = [ytdlp] + _ytdlp_audio_args() + _ytdlp_cookie_args() + [
+            cmd = [ytdlp] + _ytdlp_base_args() + _ytdlp_audio_args() + _ytdlp_cookie_args() + [
                 "--newline",
                 "--match-filter", "duration<600",
                 "--max-downloads", "1",
