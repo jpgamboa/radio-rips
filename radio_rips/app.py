@@ -157,15 +157,28 @@ def _ytdlp_audio_args() -> list[str]:
     """Return yt-dlp flags for the configured audio format."""
     fmt = _get_setting("ytdlp_format") or "mp3"
     if fmt == "best":
-        # Keep original codec, no re-encoding
         return ["-x"]
     return ["-x", "--audio-format", fmt, "--audio-quality", "0"]
+
+
+def _ytdlp_cookie_args() -> list[str]:
+    """Return yt-dlp flags for cookie authentication."""
+    cookie_method = _get_setting("ytdlp_cookie_method") or "none"
+    if cookie_method == "browser":
+        browser = _get_setting("ytdlp_cookie_browser") or "chrome"
+        return ["--cookies-from-browser", browser]
+    elif cookie_method == "file":
+        cookie_file = _get_setting("ytdlp_cookie_file")
+        if cookie_file and os.path.isfile(cookie_file):
+            return ["--cookies", cookie_file]
+    return []
 
 
 def _run_ytdlp(job_id: str, url: str, out_dir: str):
     """Download via yt-dlp (direct YouTube/SoundCloud/etc)."""
     cmd = [_find_bin("yt-dlp")]
     cmd += _ytdlp_audio_args()
+    cmd += _ytdlp_cookie_args()
     cmd += [
         "--newline",
         "-o", os.path.join(out_dir, "%(title)s.%(ext)s"),
@@ -407,7 +420,7 @@ def _run_playlist(job_id: str, url: str, out_dir: str, source: str):
             pct = int((i - 1) / total * 100)
             _set_progress(job_id, pct, f"[{i}/{total}] {query}")
 
-            cmd = [ytdlp] + _ytdlp_audio_args() + [
+            cmd = [ytdlp] + _ytdlp_audio_args() + _ytdlp_cookie_args() + [
                 "--newline",
                 "--match-filter", "duration<600",
                 "--max-downloads", "1",
@@ -635,6 +648,9 @@ def settings():
         spotify_client_id=_get_setting("spotify_client_id"),
         spotify_client_secret=_get_setting("spotify_client_secret"),
         ytdlp_format=_get_setting("ytdlp_format") or "mp3",
+        ytdlp_cookie_method=_get_setting("ytdlp_cookie_method") or "none",
+        ytdlp_cookie_browser=_get_setting("ytdlp_cookie_browser") or "chrome",
+        ytdlp_cookie_file=_get_setting("ytdlp_cookie_file"),
         deezer_arl=_get_setting("deezer_arl") or config.DEEZER_ARL,
         deezer_quality=_get_setting("deezer_quality") or "flac",
     )
@@ -654,9 +670,16 @@ def settings_save():
 
     ytdlp_format = request.form.get("ytdlp_format", "mp3").strip()
 
+    ytdlp_cookie_method = request.form.get("ytdlp_cookie_method", "none").strip()
+    ytdlp_cookie_browser = request.form.get("ytdlp_cookie_browser", "chrome").strip()
+    ytdlp_cookie_file = request.form.get("ytdlp_cookie_file", "").strip()
+
     _set_setting("spotify_client_id", spotify_client_id)
     _set_setting("spotify_client_secret", spotify_client_secret)
     _set_setting("ytdlp_format", ytdlp_format)
+    _set_setting("ytdlp_cookie_method", ytdlp_cookie_method)
+    _set_setting("ytdlp_cookie_browser", ytdlp_cookie_browser)
+    _set_setting("ytdlp_cookie_file", ytdlp_cookie_file)
     _set_setting("deezer_arl", deezer_arl)
     _set_setting("deezer_quality", deezer_quality)
 

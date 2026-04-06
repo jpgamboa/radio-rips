@@ -35,6 +35,49 @@
     </div>
 
     <div class="card">
+        <h2>YouTube Cookies</h2>
+        <p style="color:var(--muted); margin-bottom:0.8rem;">
+            Optional. Use your YouTube/YouTube Premium account for higher quality audio
+            (256kbps vs 128kbps) and to avoid sign-in blocks.
+        </p>
+
+        <div class="quality-toggle">
+            <input type="radio" name="ytdlp_cookie_method" value="none" id="ck-none" {{ 'checked' if ytdlp_cookie_method == 'none' }}>
+            <label for="ck-none">None</label>
+            <input type="radio" name="ytdlp_cookie_method" value="browser" id="ck-browser" {{ 'checked' if ytdlp_cookie_method == 'browser' }}>
+            <label for="ck-browser">Browser</label>
+            <input type="radio" name="ytdlp_cookie_method" value="file" id="ck-file" {{ 'checked' if ytdlp_cookie_method == 'file' }}>
+            <label for="ck-file">Cookie File</label>
+        </div>
+
+        <div id="cookie-browser-opts" style="margin-top:0.8rem; {{ 'display:none;' if ytdlp_cookie_method != 'browser' }}">
+            <p style="color:var(--muted); margin-bottom:0.5rem;">Pull cookies from:</p>
+            <div class="quality-toggle">
+                <input type="radio" name="ytdlp_cookie_browser" value="chrome" id="cb-chrome" {{ 'checked' if ytdlp_cookie_browser == 'chrome' }}>
+                <label for="cb-chrome">Chrome</label>
+                <input type="radio" name="ytdlp_cookie_browser" value="firefox" id="cb-firefox" {{ 'checked' if ytdlp_cookie_browser == 'firefox' }}>
+                <label for="cb-firefox">Firefox</label>
+                <input type="radio" name="ytdlp_cookie_browser" value="brave" id="cb-brave" {{ 'checked' if ytdlp_cookie_browser == 'brave' }}>
+                <label for="cb-brave">Brave</label>
+                <input type="radio" name="ytdlp_cookie_browser" value="edge" id="cb-edge" {{ 'checked' if ytdlp_cookie_browser == 'edge' }}>
+                <label for="cb-edge">Edge</label>
+            </div>
+            <p style="color:var(--muted); margin-top:0.5rem; font-size:0.45rem;">
+                Make sure you're logged into YouTube in this browser.
+            </p>
+        </div>
+
+        <div id="cookie-file-opts" style="margin-top:0.8rem; {{ 'display:none;' if ytdlp_cookie_method != 'file' }}">
+            <p style="color:var(--muted); margin-bottom:0.5rem;">
+                Path to a Netscape-format cookies.txt file.
+                Export with a browser extension like "Get cookies.txt LOCALLY".
+            </p>
+            <input type="text" name="ytdlp_cookie_file" value="{{ ytdlp_cookie_file or '' }}"
+                   placeholder="/path/to/cookies.txt" autocomplete="off" spellcheck="false">
+        </div>
+    </div>
+
+    <div class="card">
         <h2>Spotify API</h2>
         <p style="color:var(--muted); margin-bottom:0.8rem;">
             Required to download from Spotify URLs. Spotify tracks are resolved
@@ -88,4 +131,15 @@
 
     <button type="submit">Save</button>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('input[name="ytdlp_cookie_method"]').forEach(r => {
+    r.addEventListener('change', () => {
+        document.getElementById('cookie-browser-opts').style.display = r.value === 'browser' ? '' : 'none';
+        document.getElementById('cookie-file-opts').style.display = r.value === 'file' ? '' : 'none';
+    });
+});
+</script>
 {% endblock %}
