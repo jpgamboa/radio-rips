@@ -398,6 +398,79 @@ def _run_playlist(job_id: str, url: str, out_dir: str, source: str):
         _clear_progress(job_id)
 
 
+def _search_deezer(query: str) -> str | None:
+    """Search the public Deezer API and return the first track URL, or None."""
+    try:
+        resp = requests.get(
+            "https://api.deezer.com/search",
+            params={"q": query, "limit": 1},
+            timeout=10,
+        )
+        data = resp.json()
+        if data.get("data"):
+            return data["data"][0].get("link")
+    except Exception:
+        pass
+    return None
+
+
+def _run_playlist_deezer(job_id: str, url: str, out_dir: str, source: str):
+    """Resolve tracks from a streaming service, find on Deezer, download via deemix."""
+    try:
+        arl = _get_setting("deezer_arl") or config.DEEZER_ARL
+        if not arl:
+            _finish_job(job_id, out_dir, 1, "Deezer ARL not configured — set it in Settings")
+            return
+
+        _set_progress(job_id, 0, f"Resolving {source.title()} tracks...")
+        tracks = _RESOLVERS[source](url)
+        if not tracks:
+            _finish_job(job_id, out_dir, 1, f"No tracks found from {source.title()} URL")
+            return
+
+        total = len(tracks)
+        errors = []
+        bitrate = _get_setting("deezer_quality") or "flac"
+        deemix = _find_bin("deemix")
+
+        for i, query in enumerate(tracks, 1):
+            pct = int((i - 1) / total * 100)
+            _set_progress(job_id, pct, f"[{i}/{total}] Searching Deezer: {query}")
+
+            deezer_url = _search_deezer(query)
+            if not deezer_url:
+                errors.append(f"Not found on Deezer: {query}")
+                continue
+
+            _set_progress(job_id, pct, f"[{i}/{total}] Downloading: {query}")
+            proc = subprocess.run(
+                [deemix, "--bitrate", bitrate, "-p", out_dir, deezer_url],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=300,
+                env={**os.environ, "DEEZER_ARL": arl},
+            )
+            if proc.returncode != 0:
+                errors.append(f"Failed: {query}")
+
+        if errors and len(errors) == total:
+            _finish_job(job_id, out_dir, 1, "\n".join(errors))
+        elif errors:
+            now = datetime.now(timezone.utc).isoformat()
+            with get_db() as db:
+                db.execute(
+                    "UPDATE jobs SET status=?, finished_at=?, error=? WHERE id=?",
+                    ("done", now, "\n".join(errors), job_id),
+                )
+        else:
+            _finish_job(job_id, out_dir, 0, "")
+    except Exception as exc:
+        _finish_job(job_id, out_dir, 1, str(exc))
+    finally:
+        _clear_progress(job_id)
+
+
 def _finish_job(job_id: str, out_dir: str, returncode: int, stderr: str):
     now = datetime.now(timezone.utc).isoformat()
     status = "done" if returncode == 0 else "error"
@@ -416,7 +489,8 @@ def _finish_job(job_id: str, out_dir: str, returncode: int, stderr: str):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    has_deezer = bool(_get_setting("deezer_arl") or config.DEEZER_ARL)
+    return render_template("index.html", has_deezer=has_deezer)
 
 
 @app.route("/submit", methods=["POST"])
@@ -440,11 +514,20 @@ def submit():
         )
 
     source = _detect_source(url)
+    backend = request.form.get("backend", "youtube")
+
     if source == "deezer":
+        # Deezer URL always goes to deemix
         thread = threading.Thread(
             target=_run_deemix, args=(job_id, url, out_dir), daemon=True,
         )
+    elif source and backend == "deezer":
+        # Streaming URL (Spotify/Apple/Tidal) → resolve tracks → Deezer
+        thread = threading.Thread(
+            target=_run_playlist_deezer, args=(job_id, url, out_dir, source), daemon=True,
+        )
     elif source:
+        # Streaming URL → resolve tracks → YouTube
         thread = threading.Thread(
             target=_run_playlist, args=(job_id, url, out_dir, source), daemon=True,
         )

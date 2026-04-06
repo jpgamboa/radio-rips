@@ -7,6 +7,15 @@
 <form action="/submit" method="post" style="display:flex; flex-direction:column; align-items:center; gap:1rem; width:100%;">
     <input type="url" name="url" placeholder="YouTube / Spotify / Apple Music / Tidal / Deezer URL" required autofocus>
 
+    {% if has_deezer %}
+    <div class="quality-toggle">
+        <input type="radio" name="backend" value="youtube" id="be-yt" checked>
+        <label for="be-yt">YouTube</label>
+        <input type="radio" name="backend" value="deezer" id="be-dz">
+        <label for="be-dz">Deezer</label>
+    </div>
+    {% endif %}
+
     <button type="submit">Rip It</button>
 </form>
 {% endblock %}
