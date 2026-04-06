@@ -4,6 +4,13 @@ A self-hosted web UI for ripping audio from YouTube, Spotify, Apple Music, Tidal
 
 Paste a URL, hit "Rip It", and get audio files. Spotify, Apple Music, and Tidal links are automatically resolved to YouTube and downloaded via [yt-dlp](https://github.com/yt-dlp/yt-dlp). Deezer links are downloaded directly via [deemix](https://www.reddit.com/r/deemix/) with configurable quality (FLAC, MP3 320, MP3 128).
 
+## Screenshots
+
+| | |
+|---|---|
+| ![Home](screenshots/home.png) | ![History](screenshots/history.png) |
+| ![Settings](screenshots/settings-top.png) | ![Settings continued](screenshots/settings-bottom.png) |
+
 ## Supported Sources
 
 | Source | URL format | API key needed? |
