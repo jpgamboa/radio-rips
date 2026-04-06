@@ -692,6 +692,59 @@ def settings_save():
     return redirect(url_for("settings"))
 
 
+_TEST_VIDEO = "https://www.youtube.com/watch?v=dQw4w9WcXcQ"
+
+
+@app.route("/api/test-cookies")
+def test_cookies():
+    """Check what audio quality yt-dlp can access with current cookie settings."""
+    try:
+        ytdlp = _find_bin("yt-dlp")
+        cmd = [ytdlp] + _ytdlp_base_args() + _ytdlp_cookie_args() + [
+            "-F", "--no-warnings", _TEST_VIDEO,
+        ]
+        proc = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, timeout=30,
+        )
+        output = proc.stdout
+
+        # Parse audio lines for max bitrate
+        max_abr = 0
+        has_premium = False
+        for line in output.splitlines():
+            lower = line.lower()
+            if "audio only" not in lower:
+                continue
+            # Look for bitrate like "128k" or "256k"
+            m = re.search(r'(\d+)k', line)
+            if m:
+                abr = int(m.group(1))
+                if abr > max_abr:
+                    max_abr = abr
+
+        if max_abr >= 256:
+            has_premium = True
+
+        cookie_method = _get_setting("ytdlp_cookie_method") or "none"
+        return jsonify({
+            "ok": proc.returncode == 0,
+            "cookie_method": cookie_method,
+            "max_audio_bitrate": max_abr,
+            "premium": has_premium,
+            "message": (
+                f"Premium detected — {max_abr}kbps audio available"
+                if has_premium
+                else f"Standard quality — max {max_abr}kbps audio"
+                if max_abr > 0
+                else "Could not detect audio formats"
+            ),
+            "error": output if proc.returncode != 0 else None,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)})
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

@@ -75,6 +75,11 @@
             <input type="text" name="ytdlp_cookie_file" value="{{ ytdlp_cookie_file or '' }}"
                    placeholder="/path/to/cookies.txt" autocomplete="off" spellcheck="false">
         </div>
+
+        <button type="button" id="test-cookies-btn"
+                style="margin-top:1rem; font-size:0.55rem; padding:8px 14px;"
+                onclick="testCookies()">Test Cookies</button>
+        <p id="cookie-test-result" style="margin-top:0.5rem; font-size:0.5rem; min-height:1.2em;"></p>
     </div>
 
     <div class="card">
@@ -141,5 +146,33 @@ document.querySelectorAll('input[name="ytdlp_cookie_method"]').forEach(r => {
         document.getElementById('cookie-file-opts').style.display = r.value === 'file' ? '' : 'none';
     });
 });
+
+async function testCookies() {
+    const btn = document.getElementById('test-cookies-btn');
+    const result = document.getElementById('cookie-test-result');
+    btn.disabled = true;
+    btn.textContent = 'Testing...';
+    result.textContent = '';
+    result.style.color = 'var(--muted)';
+    try {
+        const res = await fetch('/api/test-cookies');
+        const data = await res.json();
+        if (data.premium) {
+            result.style.color = 'var(--primary-color)';
+            result.textContent = data.message;
+        } else if (data.ok) {
+            result.style.color = '#f1c40f';
+            result.textContent = data.message + ' (no Premium detected)';
+        } else {
+            result.style.color = 'var(--error-color)';
+            result.textContent = data.message || 'Test failed';
+        }
+    } catch(e) {
+        result.style.color = 'var(--error-color)';
+        result.textContent = 'Error: ' + e.message;
+    }
+    btn.disabled = false;
+    btn.textContent = 'Test Cookies';
+}
 </script>
 {% endblock %}
