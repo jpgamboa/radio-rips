@@ -237,11 +237,35 @@ def _resolve_spotify(url: str) -> list[str]:
     raise ValueError(f"Unsupported Spotify URL: {url}")
 
 
+def _odesli_lookup(song_url: str) -> str | None:
+    """Use Odesli (song.link) API to get 'Artist - Title' from any song URL."""
+    try:
+        resp = requests.get(
+            "https://api.song.link/v1-alpha.1/links",
+            params={"url": song_url},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        # Pick the first available entity for metadata
+        for entity in data.get("entitiesByUniqueId", {}).values():
+            artist = entity.get("artistName", "")
+            title = entity.get("title", "")
+            if artist and title:
+                return f"{artist} - {title}"
+    except Exception:
+        pass
+    return None
+
+
 def _resolve_apple_music(url: str) -> list[str]:
     resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
     resp.raise_for_status()
 
-    tracks = []
+    # Collect raw track info: list of (name, artist, url)
+    raw_tracks: list[tuple[str, str, str]] = []
+
     for match in re.finditer(
         r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
         resp.text, re.DOTALL,
@@ -253,30 +277,38 @@ def _resolve_apple_music(url: str) -> list[str]:
 
         items = data if isinstance(data, list) else [data]
         for item in items:
-            # Single song page: MusicComposition with nested audio.byArtist
             if item.get("@type") == "MusicComposition":
                 audio = item.get("audio", {})
                 by = audio.get("byArtist", [])
                 artist = by[0].get("name", "") if isinstance(by, list) and by else by.get("name", "") if isinstance(by, dict) else ""
                 name = item.get("name", "")
                 if name:
-                    tracks.append(f"{artist} - {name}" if artist else name)
+                    raw_tracks.append((name, artist, item.get("url", "")))
 
-            # Playlist / album: track[] has names but often no byArtist
             elif item.get("@type") in ("MusicPlaylist", "MusicAlbum"):
                 track_key = "track" if "track" in item else "tracks"
                 for t in item.get(track_key, []):
                     name = t.get("name", "")
-                    # Try to get artist (sometimes present, sometimes not)
                     by = t.get("byArtist", {})
                     artist = by.get("name", "") if isinstance(by, dict) else ""
                     if not artist and isinstance(by, list) and by:
                         artist = by[0].get("name", "")
+                    track_url = t.get("url", "")
                     if name:
-                        tracks.append(f"{artist} - {name}" if artist else name)
+                        raw_tracks.append((name, artist, track_url))
+
+    # Enrich tracks missing artist info via Odesli
+    tracks = []
+    for name, artist, track_url in raw_tracks:
+        if artist:
+            tracks.append(f"{artist} - {name}")
+        elif track_url:
+            enriched = _odesli_lookup(track_url)
+            tracks.append(enriched if enriched else name)
+        else:
+            tracks.append(name)
 
     if not tracks:
-        # Fallback: og:title often has "Song - Artist" format
         title_match = re.search(r'<meta\s+property="og:title"\s+content="([^"]+)"', resp.text)
         if title_match:
             tracks.append(title_match.group(1))
@@ -377,8 +409,10 @@ def _run_playlist(job_id: str, url: str, out_dir: str, source: str):
 
             cmd = [ytdlp] + _ytdlp_audio_args() + [
                 "--newline",
+                "--match-filter", "duration<600",
+                "--max-downloads", "1",
                 "-o", os.path.join(out_dir, "%(title)s.%(ext)s"),
-                f"ytsearch1:{query} official audio",
+                f"ytsearch5:{query} official audio",
             ]
             proc = subprocess.run(
                 cmd,
@@ -387,7 +421,8 @@ def _run_playlist(job_id: str, url: str, out_dir: str, source: str):
                 text=True,
                 timeout=300,
             )
-            if proc.returncode != 0:
+            # returncode 101 = --max-downloads limit reached (success)
+            if proc.returncode not in (0, 101):
                 errors.append(f"Failed: {query}")
 
         if errors and len(errors) == total:
@@ -460,7 +495,8 @@ def _run_playlist_deezer(job_id: str, url: str, out_dir: str, source: str):
                 timeout=300,
                 env={**os.environ, "DEEZER_ARL": arl},
             )
-            if proc.returncode != 0:
+            # returncode 101 = --max-downloads limit reached (success)
+            if proc.returncode not in (0, 101):
                 errors.append(f"Failed: {query}")
 
         if errors and len(errors) == total:
