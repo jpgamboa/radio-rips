@@ -153,17 +153,25 @@ def _stream_process(job_id: str, cmd: list[str], out_dir: str, env=None):
         _clear_progress(job_id)
 
 
+def _ytdlp_audio_args() -> list[str]:
+    """Return yt-dlp flags for the configured audio format."""
+    fmt = _get_setting("ytdlp_format") or "mp3"
+    if fmt == "best":
+        # Keep original codec, no re-encoding
+        return ["-x"]
+    return ["-x", "--audio-format", fmt, "--audio-quality", "0"]
+
+
 def _run_ytdlp(job_id: str, url: str, out_dir: str):
-    """Download via yt-dlp (direct YouTube/SoundCloud/etc, MP3 output)."""
-    _stream_process(job_id, [
-        _find_bin("yt-dlp"),
-        "-x",
-        "--audio-format", "mp3",
-        "--audio-quality", "0",
+    """Download via yt-dlp (direct YouTube/SoundCloud/etc)."""
+    cmd = [_find_bin("yt-dlp")]
+    cmd += _ytdlp_audio_args()
+    cmd += [
         "--newline",
         "-o", os.path.join(out_dir, "%(title)s.%(ext)s"),
         url,
-    ], out_dir)
+    ]
+    _stream_process(job_id, cmd, out_dir)
 
 
 def _run_deemix(job_id: str, url: str, out_dir: str):
@@ -358,15 +366,13 @@ def _run_playlist(job_id: str, url: str, out_dir: str, source: str):
             pct = int((i - 1) / total * 100)
             _set_progress(job_id, pct, f"[{i}/{total}] {query}")
 
+            cmd = [ytdlp] + _ytdlp_audio_args() + [
+                "--newline",
+                "-o", os.path.join(out_dir, "%(title)s.%(ext)s"),
+                f"ytsearch1:{query}",
+            ]
             proc = subprocess.run(
-                [
-                    ytdlp, "-x",
-                    "--audio-format", "mp3",
-                    "--audio-quality", "0",
-                    "--newline",
-                    "-o", os.path.join(out_dir, "%(title)s.%(ext)s"),
-                    f"ytsearch1:{query}",
-                ],
+                cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -500,6 +506,7 @@ def settings():
         download_dir=_get_setting("download_dir") or config.DOWNLOAD_DIR,
         spotify_client_id=_get_setting("spotify_client_id"),
         spotify_client_secret=_get_setting("spotify_client_secret"),
+        ytdlp_format=_get_setting("ytdlp_format") or "mp3",
         deezer_arl=_get_setting("deezer_arl") or config.DEEZER_ARL,
         deezer_quality=_get_setting("deezer_quality") or "flac",
     )
@@ -517,8 +524,11 @@ def settings_save():
         os.makedirs(download_dir, exist_ok=True)
         _set_setting("download_dir", download_dir)
 
+    ytdlp_format = request.form.get("ytdlp_format", "mp3").strip()
+
     _set_setting("spotify_client_id", spotify_client_id)
     _set_setting("spotify_client_secret", spotify_client_secret)
+    _set_setting("ytdlp_format", ytdlp_format)
     _set_setting("deezer_arl", deezer_arl)
     _set_setting("deezer_quality", deezer_quality)
 

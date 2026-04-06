@@ -15,6 +15,26 @@
     </div>
 
     <div class="card">
+        <h2>Audio Format</h2>
+        <p style="color:var(--muted); margin-bottom:0.8rem;">
+            Output format for YouTube, Spotify, Apple Music, and Tidal downloads.
+            "Best (no re-encode)" keeps the original codec from YouTube for maximum quality.
+        </p>
+        <div class="quality-toggle">
+            <input type="radio" name="ytdlp_format" value="best" id="af-best" {{ 'checked' if ytdlp_format == 'best' }}>
+            <label for="af-best">Best</label>
+            <input type="radio" name="ytdlp_format" value="mp3" id="af-mp3" {{ 'checked' if ytdlp_format == 'mp3' }}>
+            <label for="af-mp3">MP3</label>
+            <input type="radio" name="ytdlp_format" value="opus" id="af-opus" {{ 'checked' if ytdlp_format == 'opus' }}>
+            <label for="af-opus">Opus</label>
+            <input type="radio" name="ytdlp_format" value="m4a" id="af-m4a" {{ 'checked' if ytdlp_format == 'm4a' }}>
+            <label for="af-m4a">M4A</label>
+            <input type="radio" name="ytdlp_format" value="wav" id="af-wav" {{ 'checked' if ytdlp_format == 'wav' }}>
+            <label for="af-wav">WAV</label>
+        </div>
+    </div>
+
+    <div class="card">
         <h2>Spotify API</h2>
         <p style="color:var(--muted); margin-bottom:0.8rem;">
             Required to download from Spotify URLs. Spotify tracks are resolved
